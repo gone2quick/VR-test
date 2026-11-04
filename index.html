@@ -13,7 +13,7 @@ button:disabled{opacity:.6}
 <h1>Hotroom VR</h1>
 <div id="box"></div>
 <button id="btn">Checking VR…</button> <span id="info"></span>
-<div class="c"><b>Controls (Quest 3S)</b><br>Right trigger: shoot / stab · B: swap gun and knife · Left stick: move · Right stick: snap turn.<br>Time only moves as fast as you do. Hit the kill quota to clear the building and drop into a new one.</div>
+<div class="c"><b>Controls (Quest 3S)</b><br>Right trigger: shoot · Left stick: move · Right stick: snap turn.<br><b>Reload:</b> hold B to drop the mag, put your left hand by your hip and squeeze the grip to grab a fresh one, push it into the bottom of the gun, then squeeze the grip with your left hand on the back of the slide and pull it toward you. (If a round is still chambered you can skip the slide pull.)<br>Time only moves as fast as you do. Hit the kill quota to clear the building and drop into a new one.</div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -30,36 +30,38 @@ addEventListener('resize',fit);fit();
 
 const v=new T.Vector3(),w=new T.Vector3(),d=new T.Vector3(),d2=new T.Vector3(),pc=new T.Vector3(),tip=new T.Vector3(),q=new T.Quaternion(),ph=[new T.Vector3(),new T.Vector3()];
 let bld=new T.Group(),walls=[],conn=[],dist=[],en=[],bl=[];
-let level=0,score=0,hp=3,quota=4,kills=0,mode=0,ts=.1,cd=0,spT=5,pcell=-1,init=true,pend=false,flash=0,pb=false,sn=0,L=null,R=null;
+let level=0,score=0,hp=3,quota=4,kills=0,ts=.1,cd=0,spT=5,pcell=-1,init=true,pend=false,flash=0,sn=0,L=null,R=null;
+const MAG=8;let ammo=MAG,ch=true,magIn=true,held=false,bT=0,bDone=false,gg=false,rackZ=null,racked=false,drops=[];
 const mat=c=>new T.MeshLambertMaterial({color:c});
 const bx=(a,b,c,col,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(a,b,c),mat(col));m.position.set(x,y,z);return m};
 const wm=mat(0x8a93a8),fm=mat(0x2a2f3c);
 
 // weapons
-const wpn=new T.Group(),gun=new T.Group(),kn=new T.Group();
-gun.add(bx(.04,.06,.2,0x333333,0,0,-.08),bx(.035,.09,.04,0x222222,0,-.06,0));
-kn.add(bx(.03,.03,.1,0x553311,0,0,0),bx(.012,.05,.28,0xdddddd,0,0,-.19));
-wpn.add(gun,kn);
+const wpn=new T.Group(),gun=new T.Group();
+const slide=bx(.035,.035,.16,0x444444,0,.03,-.07),gMag=bx(.03,.05,.035,0x999999,0,-.115,0),hMag=bx(.03,.07,.035,0x999999,0,0,-.03);
+gun.add(bx(.04,.03,.18,0x333333,0,0,-.07),slide,bx(.035,.09,.04,0x222222,0,-.06,0),gMag);
+wpn.add(gun);
 // wrist HUD
 const cv=document.createElement('canvas');cv.width=256;cv.height=128;
 const cx=cv.getContext('2d'),tex=new T.CanvasTexture(cv);
 const hud=new T.Mesh(new T.PlaneGeometry(.16,.08),new T.MeshBasicMaterial({map:tex}));
 hud.position.set(0,.05,.04);hud.rotation.x=-.6;
 function hudUp(){
-  const s='SCORE '+score,t='BLDG '+(level+1)+'  KILLS '+kills+'/'+quota,u='HP '+'♥'.repeat(Math.max(hp,0))+'  '+(mode?'KNIFE':'GUN');
+  const am=!magIn?(ch?'NO MAG +1':'NO MAG'):ch?ammo+'+1':ammo>0?'RACK':'EMPTY';
+  const s='SCORE '+score,t='BLDG '+(level+1)+'  KILLS '+kills+'/'+quota,u='HP '+'♥'.repeat(Math.max(hp,0))+'  '+am;
   cx.fillStyle='#000';cx.fillRect(0,0,256,128);cx.fillStyle='#fff';
   cx.font='bold 28px sans-serif';cx.fillText(s,10,36);
   cx.font='22px sans-serif';cx.fillText(t,10,72);cx.fillText(u,10,108);
   tex.needsUpdate=true;info.textContent=s+' · '+t+' · '+u;
 }
-function showW(){gun.visible=!mode;kn.visible=!!mode;hudUp()}
+function showW(){gMag.visible=magIn;slide.position.z=ch?-.07:-.03;hMag.visible=held;hudUp()}
 
 // controllers
 const ctl=[0,1].map(i=>{
   const c=ren.xr.getController(i);rig.add(c);
   c.addEventListener('connected',e=>{
     c.userData.src=e.data;
-    if(e.data.handedness==='right'){c.add(wpn);R=c}else{c.add(hud);L=c}
+    if(e.data.handedness==='right'){c.add(wpn);R=c}else{c.add(hud,hMag);L=c}
   });
   c.addEventListener('selectstart',()=>{if(c===R)trig()});
   return c;
@@ -125,9 +127,11 @@ function newBld(){
 
 // combat
 function trig(){
-  if(mode||cd>0)return;cd=.25;
+  if(!ch||cd>0)return;cd=.25;
+  ch=false;if(magIn&&ammo>0){ammo--;ch=true}
   R.getWorldPosition(w);R.getWorldQuaternion(q);d.set(0,0,-1).applyQuaternion(q);
-  addBullet(w.clone().addScaledVector(d,.2),d.clone().multiplyScalar(18),0xffee55,.03,false);
+  addBullet(w.clone().addScaledVector(d,.2),d.clone().multiplyScalar(18),0xffee55,.012,false);
+  showW();
 }
 function addBullet(p,vel,col,r,h){
   const m=new T.Mesh(new T.SphereGeometry(r,8,6),new T.MeshBasicMaterial({color:col}));
@@ -141,9 +145,10 @@ function kill(k){
 }
 function hurt(){
   hp--;flash=.3;scene.background.set(0x601010);
-  if(hp<=0){score=0;level=0;hp=3;pend=true}
+  if(hp<=0){score=0;level=0;hp=3;pend=true;ammo=MAG;ch=true;magIn=true;held=false;showW()}
   hudUp();
 }
+function dropMag(p){const m=hMag.clone();m.position.copy(p);m.position.y-=.1;m.visible=true;scene.add(m);drops.push({m,vy:0,t:2})}
 function push(){
   const r=.3;cam.getWorldPosition(v);
   for(const k of walls){
@@ -163,7 +168,7 @@ ren.setAnimationLoop(()=>{
   const sp=init?0:Math.min(v.distanceTo(pc)/dt,4);pc.copy(v);
   const hv=ctl.map((c,i)=>{c.getWorldPosition(w);const s=init?0:Math.min(w.distanceTo(ph[i])/dt,8);ph[i].copy(w);return s});
   init=false;
-  ts+=(Math.min(1,.05+sp*.5+(hv[0]+hv[1])*.12)-ts)*Math.min(1,dt*8);
+  ts+=(Math.min(.8,.03+sp*.35+(hv[0]+hv[1])*.08)-ts)*Math.min(1,dt*8);
   const wd=dt*ts;cd-=dt;
   if(flash>0){flash-=dt;if(flash<=0)scene.background.set(BG)}
 
@@ -179,7 +184,22 @@ ren.setAnimationLoop(()=>{
     const g=R.userData.src.gamepad,x=g.axes[2]||0;
     if(Math.abs(x)>.7){if(!sn){rig.rotation.y-=Math.sign(x)*Math.PI/6;sn=1}}else sn=0;
     const bb=!!(g.buttons[5]&&g.buttons[5].pressed);
-    if(bb&&!pb){mode^=1;showW()}pb=bb;
+    if(bb){bT+=dt;if(bT>.4&&!bDone&&magIn){bDone=true;magIn=false;ammo=0;R.getWorldPosition(w);dropMag(w);showW()}}else{bT=0;bDone=false}
+  }
+  if(L&&R&&L.userData.src.gamepad){
+    const gp=L.userData.src.gamepad.buttons[1],gr=!!(gp&&gp.pressed);
+    L.getWorldPosition(w);cam.getWorldPosition(v);
+    if(gr&&!gg&&!held&&!magIn&&Math.hypot(w.x-v.x,w.z-v.z)<.6&&w.y<v.y-.5){held=true;showW()}
+    if(held){
+      gun.localToWorld(d.set(0,-.1,0));
+      if(w.distanceTo(d)<.12){held=false;magIn=true;ammo=MAG;showW()}
+      else if(!gr){held=false;dropMag(w);showW()}
+    }
+    gun.localToWorld(d.set(0,.03,.02));
+    if(gr&&!gg&&!held&&w.distanceTo(d)<.14){rackZ=gun.worldToLocal(w.clone()).z;racked=false}
+    else if(!gr)rackZ=null;
+    if(gr&&rackZ!==null&&!racked&&gun.worldToLocal(w.clone()).z-rackZ>.08){racked=true;if(!ch&&magIn&&ammo>0){ammo--;ch=true}showW()}
+    gg=gr;
   }
   push();cam.getWorldPosition(v);
   const cell=cellOf(v.x,v.z);
@@ -191,14 +211,14 @@ ren.setAnimationLoop(()=>{
     if(ec===cell){tx=v.x;tz=v.z}
     else{const n=conn[ec].reduce((a,c)=>dist[c]<dist[a]?c:a,conn[ec][0]);tx=(n%N+.5)*C;tz=((n/N|0)+.5)*C}
     d2.set(tx-p.x,0,tz-p.z);const ln=d2.length();
-    if(ln>.01&&(ec!==cell||ln>1.2)){d2.normalize();p.addScaledVector(d2,1.3*wd)}
+    if(ln>.01&&(ec!==cell||ln>1.2)){d2.normalize();p.addScaledVector(d2,.8*wd)}
     e.m.rotation.y=Math.atan2(v.x-p.x,v.z-p.z);
     if(ec===cell){
       e.t-=wd;
       if(e.t<=0){
-        e.t=2+Math.random()*2;
+        e.t=3+Math.random()*3;
         w.set(p.x,1.4,p.z);d.copy(v).sub(w).normalize();
-        addBullet(w.clone(),d.clone().multiplyScalar(5),0xff5522,.06,true);
+        addBullet(w.clone(),d.clone().multiplyScalar(3),0xff5522,.025,true);
       }
     }
   }
@@ -207,20 +227,15 @@ ren.setAnimationLoop(()=>{
     const s=bl[i],p=s.m.position;
     p.addScaledVector(s.v,wd);s.t-=wd;
     let dead=s.t<=0||p.y<0||p.y>2.8||walls.some(k=>p.x>k.x1&&p.x<k.x2&&p.z>k.z1&&p.z<k.z2);
-    if(!dead&&s.h){if(p.distanceTo(v)<.3){hurt();dead=true}}
+    if(!dead&&s.h){if(p.distanceTo(v)<.22){hurt();dead=true}}
     else if(!dead){const k=en.findIndex(e=>hit(e,p,.35));if(k>=0){kill(k);dead=true}}
     if(dead){scene.remove(s.m);bl.splice(i,1)}
     if(pend)break;
   }
-  // knife
-  const hr=R?hv[ctl.indexOf(R)]:0;
-  if(mode&&R&&hr>1.2&&!pend){
-    tip.set(0,0,-.33);R.localToWorld(tip);
-    const k=en.findIndex(e=>hit(e,tip,.5));if(k>=0)kill(k);
-  }
+  for(let i=drops.length-1;i>=0;i--){const o=drops[i];o.vy-=9.8*dt;o.m.position.y=Math.max(.04,o.m.position.y+o.vy*dt);o.t-=dt;if(o.t<=0){scene.remove(o.m);drops.splice(i,1)}}
   // continual spawns
   spT-=wd;
-  if(spT<=0){spT=Math.max(3,8-level);if(en.length<5+level)spawn()}
+  if(spT<=0){spT=Math.max(5,12-level);if(en.length<5+level)spawn()}
   if(pend){pend=false;newBld()}
   ren.render(scene,cam);
 });
