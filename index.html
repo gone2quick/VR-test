@@ -43,23 +43,24 @@ box(30,.1,30,0x1c1f24,40,-.05,0);[[34,4,-12,6],[46,6,-12,7],[28,3,-5,4],[52,4,-4
 const npc=fig(0x6b7a3a,40,-1.5);npc.visible=false;
 // state
 let cash=0,day=1,hour=8,acc=0,loc='home',deal=null,phase='',resMsg='',msg='Tap the grow rack and plant your seeds.',buyers=[];
-const inv={'seed:0':3,chem:0,part:0},strains=[{n:'Green Rookie',v:30,g:8,y:4}],drugs=[{n:'Pills',v:60,c:2,h:6,y:5},{n:'Crystal',v:150,c:4,h:12,y:4}],guns=[{n:'Pistol',v:420,p:2,h:6},{n:'SMG',v:1300,p:5,h:12},{n:'Rifle',v:3400,p:10,h:24}],crew=[],stations=[],hit=[];
-const have=k=>inv[k]||0,add=(k,n)=>{inv[k]=have(k)+n},P=k=>{const[a,i]=k.split(':');return(a=='weed'?strains:a=='drug'?drugs:guns)[i]},nm=k=>P(k).n;
+const inv={'seed:0':3,chem:0,part:0},strains=[{n:'Green Rookie',v:30,g:8,y:4}],drugs=[{n:'Pills',v:60,c:2,h:6,y:5},{n:'Crystal',v:150,c:4,h:12,y:4}],guns=[{n:'Pistol',v:60}],crew=[],stations=[],hit=[];
+const gunsInv=[],hot=[null,null,null];
+const have=k=>k=='gun:0'?gunsInv.filter(x=>x.b=='pistol').length:inv[k]||0,add=(k,n)=>{if(k=='gun:0'){if(n<0)takeP(-n)}else inv[k]=have(k)+n},P=k=>{const[a,i]=k.split(':');return(a=='weed'?strains:a=='drug'?drugs:guns)[i]},nm=k=>P(k).n;
 const NAMES=['Skinny Pete','Big Lou','Dani','Mr. Vega','Rook','Sally','Tiny','Colt'],A=['Purple','Blue','Sour','Golden','Midnight','Pink'],N=['Haze','Kush','Widow','Dream','Punch','Cake'],A2=['Velvet','Neon','Glass','Static','Ghost'],N2=['Dust','Rush','Drop','Tabs','Candy'];
 const clk=()=>String(hour).padStart(2,'0')+':'+String(Math.floor(acc*60)).padStart(2,'0');
 function genBuyers(){buyers=[];const k=[];strains.forEach((_,i)=>k.push('weed:'+i));drugs.forEach((_,i)=>k.push('drug:'+i));if(stations.some(s=>s.k=='gun'))guns.forEach((_,i)=>k.push('gun:'+i));
- for(let i=0;i<4;i++){const key=p1(k),g=key[0]=='g',q=g?ri(1,2+Math.floor(day/2)):ri(2,6+day*2),pay=Math.round(P(key).v*q*(.85+rnd()*.5));buyers.push({n:p1(NAMES),k:key,q,pay,risk:Math.min(.65,.02+pay/22000)})}}
+ for(let i=0;i<4;i++){const key=p1(k),g=key[0]=='g',q=g?ri(1,2+Math.floor(day/2)):ri(2,6+day*2),f=.85+rnd()*.5,pay=Math.round(P(key).v*q*f);buyers.push({n:p1(NAMES),k:key,q,pay,f,risk:Math.min(.65,.02+pay/22000)})}}
 // stations
 const SPOTS=[[-3.4,-4.2,0],[-1.1,-4.2,0],[1.1,-4.2,0],[3.4,-4.2,0],[-4.2,-1,Math.PI/2],[4.2,-1,-Math.PI/2]];
 function vis(st){if(st.k=='grow')st.dots.forEach((m,i)=>{const p=st.plots[i];m.material.color.set(!p?0x333333:p.t<=0?0x7dff9a:0x2f7d46);m.scale.setScalar(!p?.4:p.t<=0?1:.5+.5*(1-p.t/strains[p.s].g))});else st.ind.material.color.set(!st.job?0x333333:st.job.t<=0?0x7dff9a:0xd9a441)}
-function build(k){const[x,z,ry]=SPOTS[stations.length],g=new T.Group();g.position.set(x,0,z);g.rotation.y=ry;S.add(g);const st={k,job:null},mk=(w,h,d,c,px,py,pz)=>box(w,h,d,c,px,py,pz,g);
+function build(k){const[x,z,ry]=SPOTS[stations.length],g=new T.Group();g.position.set(x,0,z);g.rotation.y=ry;S.add(g);const st={k,g,job:null},mk=(w,h,d,c,px,py,pz)=>box(w,h,d,c,px,py,pz,g);
  const base=k=='grow'?mk(1.4,.5,.9,0x4a3320,0,.25,0):mk(1.4,.9,.7,k=='gun'?0x5a4636:0xc9c9d1,0,.45,0),hs=[base];
  if(k=='grow'){hs.push(mk(1.4,.05,.9,0xb06bff,0,1.8,0));st.plots=[null,null,null,null];st.dots=[-.45,-.15,.15,.45].map(px=>{const m=new T.Mesh(new T.SphereGeometry(.12,10,8),new T.MeshLambertMaterial({color:0x333333}));m.position.set(px,.65,0);g.add(m);return m})}
  else{if(k=='gun')mk(.6,.08,.12,0x111111,-.3,.94,0);else{mk(.12,.3,.12,0x4be08a,-.3,1.05,0);mk(.12,.22,.12,0xb06bff,.1,1.01,0)}st.ind=new T.Mesh(new T.SphereGeometry(.09,10,8),new T.MeshBasicMaterial({color:0x333333}));st.ind.position.set(0,1.4,0);g.add(st.ind)}
  tag(k=='grow'?'Grow rack':k=='gun'?'Gun bench':'Chem lab',g);hs.forEach(m=>{m.userData.act=()=>open(()=>stUI(st));hit.push(m)});stations.push(st);vis(st)}
 function stUI(st){
  if(st.k=='grow')return{title:'Grow rack',lines:['Plants glow bright green when ready.',msg],rows:st.plots.map((p,i)=>!p?{t:`Plot ${i+1}: empty. Plant a seed`,f:()=>goto(()=>plantUI(st,i))}:p.t>0?{t:`Plot ${i+1}: ${strains[p.s].n} (${p.t}h left)`,d:1}:{t:`Plot ${i+1}: harvest ${strains[p.s].n}`,f:()=>{add('weed:'+p.s,strains[p.s].y);msg=`Harvested ${strains[p.s].y}× ${strains[p.s].n}.`;st.plots[i]=null;vis(st)}})};
- const gun=st.k=='gun',rows=[];
+ if(st.k=='gun')return gunUI(st);const gun=0,rows=[];
  if(st.job){const j=st.job;rows.push(j.t>0?{t:`Working on ${j.n}: ${j.t}h left`,d:1}:{t:`Collect ${j.n}`,f:()=>{j.done();st.job=null;vis(st)}})}
  else if(gun)guns.forEach((g,i)=>rows.push({t:`Craft 2× ${g.n} (${g.p} parts, ${g.h}h)`,d:have('part')<g.p,f:()=>{add('part',-g.p);st.job={n:'2× '+g.n,t:g.h,done:()=>{add('gun:'+i,2);msg='Collected 2× '+g.n+'.'}};vis(st)}}));
  else{drugs.forEach((g,i)=>rows.push({t:`Cook ${g.n} (${g.c} chems, ${g.h}h, makes ${g.y})`,d:have('chem')<g.c,f:()=>{add('chem',-g.c);st.job={n:g.y+'× '+g.n,t:g.h,done:()=>{add('drug:'+i,g.y);msg=`Collected ${g.y}× ${g.n}.`}};vis(st)}}));
@@ -69,26 +70,31 @@ function stUI(st){
  return{title:gun?'Gun bench':'Chem lab',lines:[gun?`Parts: ${have('part')}. Buy more from the supplier.`:`Chems: ${have('chem')}. Buy more from the supplier.`,msg],rows}}
 const plantUI=(st,i)=>({title:'Pick a seed',lines:['Better strains grow faster or yield more.'],rows:strains.map((s,j)=>({t:`${s.n}: ${have('seed:'+j)} seeds, ${s.g}h, yields ${s.y}`,d:have('seed:'+j)<1,f:()=>{add('seed:'+j,-1);st.plots[i]={s:j,t:s.g};vis(st);goto(()=>stUI(st))}})).slice(0,7).concat([{t:'Back',f:()=>goto(()=>stUI(st))}])});
 // phone
-const stash=()=>{const f=(a,p)=>a.map((s,i)=>have(p+i)?have(p+i)+'× '+s.n:'').filter(Boolean).join(', ')||'none';return[`Chems ${have('chem')}   Parts ${have('part')}   Seeds ${strains.reduce((a,_,i)=>a+have('seed:'+i),0)}`,'Weed: '+f(strains,'weed:'),'Drugs: '+f(drugs,'drug:'),'Guns: '+f(guns,'gun:'),msg]};
+const stash=()=>{const f=(a,p)=>a.map((s,i)=>have(p+i)?have(p+i)+'× '+s.n:'').filter(Boolean).join(', ')||'none';return[`Chems ${have('chem')}   Seeds ${strains.reduce((a,_,i)=>a+have('seed:'+i),0)}`,'Weed: '+f(strains,'weed:'),'Drugs: '+f(drugs,'drug:'),'Guns: '+gunsInv.length+' (Y or I opens inventory)',msg]};
 const phoneUI=()=>({title:'Phone',lines:stash(),rows:[{t:`Buyers (${buyers.length})`,f:()=>goto(buyersUI)},{t:'Supplier',f:()=>goto(supUI)},{t:`Crew (${crew.length})`,f:()=>goto(crewUI)},{t:'Build stations',f:()=>goto(buildUI)}]});
 const buyersUI=()=>({title:'Buyers',lines:['New buyers call every morning.','Bigger deals mean higher risk of ambush or bust.',deal?`Meeting with ${deal.n} set. Use the door.`:''],rows:buyers.map(b=>({t:`${b.n}: ${b.q}× ${nm(b.k)} for $${b.pay} (${Math.round(b.risk*100)}%)`,f:()=>goto(()=>buyerUI(b))})).concat([{t:'Back',f:()=>goto(phoneUI)}])});
-const buyerUI=b=>({title:b.n,lines:[`Wants ${b.q}× ${nm(b.k)} for $${b.pay}.`,`You have ${have(b.k)}.`,`Chance of ambush or bust: ${Math.round(b.risk*100)}%.`],rows:[{t:deal?'You already have a meeting':'Accept: meet outside',d:!!deal||have(b.k)<b.q,f:()=>{deal=b;buyers=buyers.filter(x=>x!=b);msg=`Meet ${b.n} outside. Walk to the door.`;goto(phoneUI)}},{t:'Back',f:()=>goto(buyersUI)}]});
+const buyerUI=b=>({title:b.n,lines:[`Wants ${b.q}× ${nm(b.k)} for $${b.pay}${b.k=='gun:0'?' plus your mods':''}.`,`You have ${have(b.k)}.`,`Chance of ambush or bust: ${Math.round(b.risk*100)}%.`],rows:[{t:deal?'You already have a meeting':'Accept: meet outside',d:!!deal||have(b.k)<b.q,f:()=>{deal=b;buyers=buyers.filter(x=>x!=b);msg=`Meet ${b.n} outside. Walk to the door.`;goto(phoneUI)}},{t:'Back',f:()=>goto(buyersUI)}]});
 const buy=(k,l,n,c)=>({t:`Buy ${n}× ${l} ($${c*n})`,d:cash<c*n,f:()=>{cash-=c*n;add(k,n)}});
-const supUI=()=>({title:'Supplier',lines:['Chems for the lab, parts for guns, seeds for weed.'],rows:[buy('chem','chem',1,40),buy('chem','chem',5,40),buy('part','part',1,80),buy('part','part',5,80),buy('seed:0','Green Rookie seed',1,25),buy('seed:0','Green Rookie seed',5,25),{t:'Back',f:()=>goto(phoneUI)}]});
+const supUI=()=>({title:'Supplier',lines:['Chems for the lab, parts for guns, seeds for weed.'],rows:[buy('chem','chem',1,40),buy('chem','chem',5,40),buy('seed:0','Green Rookie seed',1,25),buy('seed:0','Green Rookie seed',5,25),{t:'Back',f:()=>goto(phoneUI)}]});
 const CP=[[-2,2],[2,2],[-2.6,0],[2.6,0]];
 const crewUI=()=>({title:'Crew',lines:[`${crew.length} gangsters. Wage $40 each per day.`,'They harvest ready plants and replant seeds.','Unpaid wages make them quit.'],rows:[{t:'Hire a gangster ($400)',d:cash<400||crew.length>=4,f:()=>{cash-=400;crew.push(fig(0x33333d,...CP[crew.length]))}},{t:'Fire one',d:!crew.length,f:()=>S.remove(crew.pop())},{t:'Back',f:()=>goto(phoneUI)}]});
 const bd=(k,l,c)=>({t:`${l} ($${c})`,d:cash<c||stations.length>=6,f:()=>{cash-=c;build(k);msg=l+' built.'}});
 const buildUI=()=>({title:'Build',lines:[`Stations: ${stations.length} of 6 spots used.`,'New stations appear along the walls.'],rows:[bd('grow','Grow rack',600),bd('gun','Gun bench',1500),bd('lab','Chem lab',2500),{t:'Back',f:()=>goto(phoneUI)}]});
 [ph,scr,table].forEach(m=>{m.userData.act=()=>open(phoneUI);hit.push(m)});
+// chair
+const chair=[box(.5,.08,.5,0x5a3a22,-3.4,.5,.8),box(.5,.6,.08,0x5a3a22,-3.4,.84,.58)];[[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]].forEach(l=>box(.06,.5,.06,0x3b2a1c,-3.4+l[0],.25,.8+l[1]));tag('Chair',S,-3.4,1.5,.8);
+const waitH=n=>{for(let i=0;i<n;i++)hourTick();msg=`You waited ${n}h.`};
+const waitUI=()=>({title:'Rest',lines:['How long do you want to wait?','Plants grow and jobs finish while you wait.',msg],rows:[1,3,6,12].map(n=>({t:`Wait ${n} hour${n>1?'s':''}`,f:()=>waitH(n)})).concat([{t:'Wait until 08:00',f:()=>waitH((8-hour+24)%24||24)}])});
+chair.forEach(m=>{m.userData.act=()=>open(waitUI);hit.push(m)});
 // meetings
 const meetUI=()=>({title:'Street meet',lines:phase=='wait'?[`${deal.n} wants ${deal.q}× ${nm(deal.k)}.`,`Pays $${deal.pay}. Risk ${Math.round(deal.risk*100)}%.`,'Feels wrong? Walk away.']:[resMsg],rows:phase=='wait'?[{t:'Hand over goods, take the cash',f:resolve},{t:'Walk away',f:()=>{msg='You walked away.';goHome()}}]:[{t:'Go home',f:goHome}]});
 door.userData.act=()=>{if(loc!='home')return;if(!deal){msg='No meeting set. Check your phone.';open(()=>({title:'Door',lines:[msg],rows:[]}));return}
  loc='street';phase='wait';npc.mat.color.set(0x6b7a3a);npc.visible=true;closeUI();rig.position.set(40,0,4);rig.rotation.y=0;setTimeout(()=>open(meetUI),200)};hit.push(door);
 function goHome(){loc='home';deal=null;npc.visible=false;closeUI();rig.position.set(0,0,2.5);rig.rotation.y=0}
-function resolve(){const d=deal;if(have(d.k)<d.q){resMsg='You came without the goods.';phase='done';return}add(d.k,-d.q);const r=rnd();
+function resolve(){const d=deal;if(have(d.k)<d.q){resMsg='You came without the goods.';phase='done';return}let pay=d.pay;if(d.k=='gun:0')pay=Math.round(takeP(d.q).reduce((a,x)=>a+sell(x),0)*d.f);else add(d.k,-d.q);const r=rnd();
  if(r<d.risk*.5){const l=Math.min(cash,Math.round(d.pay*.3));cash-=l;resMsg=`Ambush! They took the goods and $${l}.`;npc.mat.color.set(0xaa2222)}
  else if(r<d.risk){const l=Math.min(cash,Math.round(d.pay*.2));cash-=l;resMsg=`Bust! Cops seized the goods. Fine: $${l}.`;npc.mat.color.set(0x2244cc)}
- else{cash+=d.pay;resMsg=`Deal done. +$${d.pay}.`}phase='done';msg=resMsg}
+ else{cash+=pay;resMsg=`Deal done. +$${pay}.`}phase='done';msg=resMsg}
 // time
 function work(){for(const st of stations)if(st.k=='grow')for(let i=0;i<4;i++){const p=st.plots[i];if(p&&p.t<=0){add('weed:'+p.s,strains[p.s].y);st.plots[i]=null;return}if(!p){const s=strains.findIndex((_,j)=>have('seed:'+j)>0);if(s>=0){add('seed:'+s,-1);st.plots[i]={s,t:strains[s].g};return}}}}
 function hourTick(){hour++;if(hour>23){hour=0;day++;const w=crew.length*40;if(w){cash-=w;if(cash<0){cash=0;S.remove(crew.pop());msg='A gangster quit: unpaid wages.'}}genBuyers()}
@@ -101,25 +107,79 @@ function draw(){const v=cur();rows=v.rows.concat([{t:'Close',f:closeUI}]);g.fill
 function open(fn){cur=fn;const p=new T.Vector3(),d=new T.Vector3();cam.getWorldPosition(p);cam.getWorldDirection(d);d.y=0;d.normalize();panel.position.set(p.x+d.x*.85,Math.max(1,p.y-.15),p.z+d.z*.85);panel.lookAt(p.x,panel.position.y,p.z);panel.visible=true;hov=-1;draw()}
 const goto=fn=>{cur=fn;draw()},closeUI=()=>{panel.visible=false;cur=null;hov=-1};
 const rowAt=uv=>{const y=(1-uv.y)*800-250,i=Math.floor(y/56);return y>=0&&y%56<50&&i<rows.length?i:-1};
+// guns
+const GB={pistol:{n:'Pistol',c:50,s:60,d:10,m:[7,15,30],r:.05,L:.18,t:2},shotgun:{n:'Shotgun',c:70,s:90,d:6,m:[4,7,0],r:.12,L:.3,t:3},rifle:{n:'Rifle',c:100,s:150,d:20,m:[15,30,60],r:.08,L:.4,t:4},smg:{n:'SMG',c:80,s:110,d:10,m:[15,30,60],r:.035,L:.26,t:3}},STK={none:[0,0,1],full:[20,30,.5],tac:[15,25,.7]},MC=[[0,0],[10,15],[20,30]],MG=['normal','large','drum'],BO=['pistol','shotgun','rifle','smg'],SK=['none','full','tac'];
+const magOf=c=>c.b=='shotgun'&&c.au?[7,10,20]:GB[c.b].m,fix=c=>{if(!magOf(c)[c.mg])c.mg=1;return c};
+const gs=c=>{const B=GB[c.b],k=STK[c.st],m=MC[c.mg],A=c.b=='shotgun'&&c.au;return{cost:B.c+10*c.br+(c.las?10:0)+(c.au?15:0)+k[0]+m[0],sell:B.s+15*c.br+(c.las?15:0)+(c.au?25:0)+k[1]+m[1],dmg:Math.round(B.d*(1+.25*c.br)*10)/10,mag:magOf(c)[c.mg],rec:B.r*k[2]*(c.au?1.3:1),len:B.L+.08*c.br+(A?.15:0),pel:c.b=='shotgun'?8:1,time:B.t+c.br}};
+const sell=g=>gs(g).sell,canTwo=g=>g.b!='pistol'&&gs(g).len>=.4,desc=c=>`${GB[c.b].n}${c.br?' +'+c.br+' barrel':''}${c.au?' auto':''}${c.las?' laser':''}${c.st!='none'?' '+c.st+' stock':''} (${MG[c.mg]} mag)`;
+function gunMesh(c){const g=new T.Group(),M=0x2b2b30,A=c.b=='shotgun'&&c.au,sc=A?1.15:1,L=(c.b=='smg'?.26:.4)*sc,k=(w,h,d,col,x,y,z)=>box(w,h,d,col,x,y,z,g);let mz;
+ k(.035,.11,.05,0x1c1c20,0,-.06,.02);k(.03,.012,.06,M,0,-.012,-.045);
+ if(c.b=='pistol'){k(.035,.04,.18,M,0,.02,-.07);mz=.16}
+ else if(c.b=='shotgun'&&!A){k(.04,.05,.2,M,0,.02,-.08);k(.025,.025,.3,0x444449,0,.03,-.2);k(.045,.04,.1,0x5a3a22,0,-.005,-.22);mz=.35}
+ else{k(.04,.06,L,M,0,.025,-L/2+.03);mz=L-.03}
+ for(let i=0;i<c.br;i++)k(.03,.03,.08,0x55555c,0,.025,-mz-.04-i*.08);mz+=.08*c.br;
+ if(c.b!='shotgun'||A){const mx=c.b=='pistol'?.02:c.b=='smg'?-.07:-.16*sc,h=[.09,.14][c.mg]||.1;if(c.mg==2){const d=new T.Mesh(new T.CylinderGeometry(.055,.055,.04,14),new T.MeshLambertMaterial({color:0x1c1c20}));d.rotation.z=Math.PI/2;d.position.set(0,-.1,mx);g.add(d)}else k(.03,h,.05,0x1c1c20,0,-.04-h/2,mx)}
+ if(c.las)k(.02,.02,.05,0xff2222,0,.065,-.12);if(c.au)k(.01,.025,.06,0xd9a441,.022,.03,-.03);
+ if(c.st=='full')k(.04,.08,.22,0x5a3a22,0,0,.17);else if(c.st=='tac')k(.025,.05,.15,0x333338,0,.02,.14);
+ g.userData.mz=mz;return g}
+function gunUI(st){const c=st.cfg||(st.cfg={b:'pistol',br:0,las:0,au:0,st:'none',mg:0}),s=gs(fix(c)),key=JSON.stringify(c),j=st.job,set=f=>()=>{f();fix(c)};
+ if(st.pk!=key){st.pk=key;if(st.pv)st.g.remove(st.pv);st.pv=gunMesh(c);st.pv.scale.setScalar(1.6);st.pv.rotation.y=-Math.PI/2;st.pv.position.set(-.3,1.05,0);st.g.add(st.pv)}
+ return{title:'Gun bench',lines:[`Cost $${s.cost}   Sells $${s.sell}`,`Damage ${s.dmg}${s.pel>1?' x'+s.pel+' pellets':''}   Mag ${s.mag}`,`Recoil ${(s.rec*100).toFixed(1)}   Two-hand: ${canTwo(c)?'yes':'no'}`,msg],rows:[
+ {t:'Body: '+GB[c.b].n,f:set(()=>{c.b=BO[(BO.indexOf(c.b)+1)%4]})},
+ {t:`Add barrel (${c.br}/5, +$10 cost, +$15 sell)`,d:c.br>=5,f:set(()=>c.br++)},
+ {t:'Remove barrel',d:!c.br,f:set(()=>c.br--)},
+ {t:`Laser: ${c.las?'on':'off'} (+$10 cost, +$15 sell)`,f:set(()=>c.las^=1)},
+ {t:`Automod: ${c.au?'on':'off'} (+$15 cost, +$25 sell)`,f:set(()=>c.au^=1)},
+ {t:'Stock: '+c.st,f:set(()=>c.st=SK[(SK.indexOf(c.st)+1)%3])},
+ {t:`Magazine: ${MG[c.mg]} (${s.mag})`,f:set(()=>{const m=magOf(c);do c.mg=(c.mg+1)%3;while(!m[c.mg])})},
+ j?(j.t>0?{t:`Building ${j.n}: ${j.t}h left`,d:1}:{t:'Collect '+j.n,f:()=>{j.done();st.job=null;vis(st)}}):{t:`Craft this gun ($${s.cost}, ${s.time}h)`,d:cash<s.cost,f:()=>{cash-=s.cost;const cf={...c};st.job={n:desc(cf),t:s.time,done:()=>{cf.ammo=gs(cf).mag;gunsInv.push(cf);msg='Collected: '+desc(cf)}};vis(st)}}]}}
+// inventory, hotbar, shooting
+let eq=null,rg=null,two=false,held=0,lefty=false,rl=0,cd=0,kick=0,lt=0,ip=0;const sq={},pb={},tw=new T.Vector3(),FW=new T.Vector3(0,0,-1),XA=new T.Vector3(1,0,0),qk=new T.Quaternion();
+const hbg=new T.Group(),hs=[0,1,2].map(i=>{const m=new T.Mesh(new T.BoxGeometry(.08,.08,.08),new T.MeshBasicMaterial({color:0x3fa56b,transparent:true,opacity:.35}));m.position.set(0,.06,.1+i*.1);hbg.add(m);return m});
+const gunCtl=()=>ctl.find(c=>c.hand==(lefty?'left':'right'));
+function refHot(){hs.forEach((m,i)=>{while(m.children.length)m.remove(m.children[0]);m.userData.g=hot[i];if(hot[i]){const q=gunMesh(hot[i]);q.scale.setScalar(.22);q.rotation.y=-Math.PI/2;m.add(q)}})}
+function unequip(){eq=null;two=false;if(rg&&rg.parent)rg.parent.remove(rg);rg=null}
+function equip(g){unequip();eq=g;rg=gunMesh(g);if(g.las)rg.userData.lz=box(.004,.004,1,0xff2222,0,.03,-1,rg)}
+function takeP(n){const ps=gunsInv.filter(x=>x.b=='pistol').sort((a,b)=>(hot.includes(a)-hot.includes(b))||sell(a)-sell(b)).slice(0,n);ps.forEach(g=>{gunsInv.splice(gunsInv.indexOf(g),1);const i=hot.indexOf(g);if(i>=0)hot[i]=null;if(eq==g)unequip()});refHot();return ps}
+const reload=()=>{if(eq&&rl<=0&&eq.ammo<gs(eq).mag)rl=.9},rehome=()=>{const g=eq;unequip();if(hbg.parent)hbg.parent.remove(hbg);if(g)equip(g)};
+const statLines=g=>{const s=gs(g);return[`Damage ${s.dmg}${s.pel>1?' x'+s.pel:''}   Mag ${s.mag}   Sells $${s.sell}`,`Recoil ${(s.rec*100).toFixed(1)}   Two-hand: ${canTwo(g)?'yes, grip the barrel':'no'}`]};
+const invUI=()=>{const L=gunsInv.slice(ip*4,ip*4+4),more=gunsInv.length>(ip+1)*4;return{title:'Inventory',lines:[`${gunsInv.length} guns. Hotbar: ${hot.filter(Boolean).length} of 3.`,'Hover a hotbar slot on your wrist and pull the trigger.',eq?`Held: ${desc(eq)} (${eq.ammo}/${gs(eq).mag})`:'Nothing equipped.'],rows:L.map(g=>({t:`${hot.includes(g)?'[hotbar] ':''}${eq==g?'[held] ':''}${desc(g)}`,f:()=>goto(()=>gunOpt(g))})).concat([{t:more?'Next page':'First page',f:()=>{ip=more?ip+1:0}},{t:`Hand: ${lefty?'left':'right'}-handed (tap to switch)`,f:()=>{lefty=!lefty;rehome()}},{t:'Unequip',d:!eq,f:unequip}])}};
+const gunOpt=g=>({title:'Gun',lines:[desc(g)].concat(statLines(g)),rows:[{t:'Equip',f:()=>{equip(g);goto(invUI)}},{t:hot.includes(g)?'Remove from hotbar':'Add to hotbar',d:!hot.includes(g)&&hot.every(Boolean),f:()=>{const i=hot.indexOf(g);if(i>=0)hot[i]=null;else hot[hot.indexOf(null)]=g;refHot()}},{t:'Back',f:()=>goto(invUI)}]});
+const dum=fig(0x884444,3.3,.9);dum.hp=100;const tg=[dum],dc=document.createElement('canvas');dc.width=256;dc.height=64;const dq=dc.getContext('2d'),dt2=new T.CanvasTexture(dc),dl=new T.Mesh(new T.PlaneGeometry(.8,.2),new T.MeshBasicMaterial({map:dt2}));dl.position.set(3.3,1.8,.9);S.add(dl);
+function dlab(t){dq.fillStyle='#15131b';dq.fillRect(0,0,256,64);dq.fillStyle='#d9a441';dq.font='bold 26px Georgia';dq.textAlign='center';dq.fillText(t,128,42);dt2.needsUpdate=true}dlab('Target');refHot();
+function fire(){if(!eq||!rg||rl>0||cd>0)return;if(eq.ammo<=0){reload();return}const s=gs(eq);eq.ammo--;cd=eq.au?.11:.28;rg.updateMatrixWorld(true);const o=new T.Vector3(0,.03,-rg.userData.mz).applyMatrix4(rg.matrixWorld);
+ for(let i=0;i<s.pel;i++){const sp=s.pel>1?.1:0,d=new T.Vector3((rnd()-.5)*sp,(rnd()-.5)*sp,-1).transformDirection(rg.matrixWorld),h=new T.Raycaster(o,d,0,60).intersectObjects(tg,true)[0],e=h?h.point:o.clone().addScaledVector(d,20),l=new T.Line(new T.BufferGeometry().setFromPoints([o,e]),new T.LineBasicMaterial({color:0xffe9a0}));S.add(l);setTimeout(()=>S.remove(l),50);
+  if(h){dum.hp=Math.round((dum.hp-s.dmg)*10)/10;dum.mat.color.set(0xff5555);setTimeout(()=>dum.mat.color.set(0x884444),80);if(dum.hp<=0)dum.hp=100}}
+ kick+=s.rec*(two?.5:1)}
+function gunTick(dt){const pres=R.xr.isPresenting,gc=pres?gunCtl():cam,oc=pres?ctl.find(c=>c.hand==(lefty?'right':'left')):null;
+ if(oc){if(hbg.parent!=oc)oc.add(hbg)}else if(hbg.parent)hbg.parent.remove(hbg);
+ if(rg&&gc&&rg.parent!=gc){gc.add(rg);rg.position.set(pres?0:.22,pres?0:-.22,pres?0:-.45)}
+ cd-=dt;kick*=Math.exp(-dt*9);if(rl>0){rl-=dt;if(rl<=0&&eq)eq.ammo=gs(eq).mag}
+ if(held&&eq&&eq.au)fire();
+ if(eq&&rg){const s=gs(eq);rg.quaternion.identity();
+  if(oc&&canTwo(eq)&&gc){if(!sq[oc.hand])two=false;else{oc.getWorldPosition(tw);if(!two){rg.updateMatrixWorld(true);if(rg.localToWorld(new T.Vector3(0,0,-s.len*.8)).distanceTo(tw)<.25)two=true}if(two)rg.quaternion.setFromUnitVectors(FW,gc.worldToLocal(tw.clone()).normalize())}}else two=false;
+  rg.quaternion.multiply(qk.setFromAxisAngle(XA,kick+(rl>0?.5:0)));
+  const lz=rg.userData.lz;if(lz){rg.updateMatrixWorld(true);const o=new T.Vector3(0,.03,-rg.userData.mz).applyMatrix4(rg.matrixWorld),d=FW.clone().transformDirection(rg.matrixWorld),h=new T.Raycaster(o,d,0,12).intersectObjects(tg,true)[0],Ln=h?h.distance:12;lz.scale.z=Ln;lz.position.z=-rg.userData.mz-Ln/2}}
+ if(++lt%10==0)dlab(`HP ${dum.hp}   ${eq?eq.ammo+'/'+gs(eq).mag+(rl>0?' reloading':''):'no gun'}`)}
 // input
 const rc=new T.Raycaster(),tm=new T.Matrix4();
 function ray(o){tm.identity().extractRotation(o.matrixWorld);rc.ray.origin.setFromMatrixPosition(o.matrixWorld);rc.ray.direction.set(0,0,-1).applyMatrix4(tm)}
-function pick(){if(panel.visible){const h=rc.intersectObject(panel)[0];if(h){const i=rowAt(h.uv);if(i>=0&&!rows[i].d){rows[i].f();if(cur&&panel.visible)draw()}return}}const h=rc.intersectObjects(hit)[0];if(h)h.object.userData.act()}
-const ctl=[0,1].map(i=>{const c=R.xr.getController(i);c.add(new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(),new T.Vector3(0,0,-4)]),new T.LineBasicMaterial({color:0xd9a441})));rig.add(c);c.addEventListener('selectstart',()=>{ray(c);pick()});return c});
+function pick(){if(panel.visible){const h=rc.intersectObject(panel)[0];if(h){const i=rowAt(h.uv);if(i>=0&&!rows[i].d){rows[i].f();if(cur&&panel.visible)draw()}return 1}}const q=rc.intersectObjects(hs)[0];if(q){if(q.object.userData.g)equip(q.object.userData.g);return 1}const h=rc.intersectObjects(hit)[0];if(h&&(!eq||h.distance<2.5)){h.object.userData.act();return 1}}
+const ctl=[0,1].map(i=>{const c=R.xr.getController(i);c.add(new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(),new T.Vector3(0,0,-4)]),new T.LineBasicMaterial({color:0xd9a441})));rig.add(c);c.addEventListener('selectstart',()=>{ray(c);if(!pick()&&eq&&c==gunCtl()){fire();held=1}});c.addEventListener('selectend',()=>held=0);c.addEventListener('connected',e=>{c.hand=e.data.handedness});return c});
 const aim=e=>rc.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),cam);
-let dn=null,snap=0;const K={};onkeydown=e=>K[e.code]=1;onkeyup=e=>K[e.code]=0;
+let dn=null,snap=0;const K={};onkeydown=e=>{K[e.code]=1;if(e.code=='KeyR')reload();if(e.code=='KeyI'||e.code=='Tab'){e.preventDefault();panel.visible&&cur==invUI?closeUI():open(invUI)}};onkeyup=e=>K[e.code]=0;
 R.domElement.onpointerdown=e=>{dn=[e.clientX,e.clientY,0]};
 onpointermove=e=>{if(dn&&e.buttons){const dx=e.clientX-dn[0],dy=e.clientY-dn[1];dn[2]+=Math.abs(dx)+Math.abs(dy);rig.rotation.y-=dx*.004;cam.rotation.x=Math.max(-1.2,Math.min(1.2,cam.rotation.x-dy*.004));dn[0]=e.clientX;dn[1]=e.clientY}else if(panel.visible&&!R.xr.isPresenting){aim(e);const h=rc.intersectObject(panel)[0],n=h?rowAt(h.uv):-1;if(n!=hov){hov=n;draw()}}};
-R.domElement.onpointerup=e=>{if(dn&&dn[2]<6){aim(e);pick()}dn=null};
+R.domElement.onpointerup=e=>{if(dn&&dn[2]<6){aim(e);if(!pick()&&eq)fire()}dn=null};
 onresize=()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)};
 function mv(x,y,dt){const d=new T.Vector3();cam.getWorldDirection(d);d.y=0;d.normalize();const rx=-d.z,rz=d.x,p=rig.position;p.x+=(-y*d.x+x*rx)*dt*2;p.z+=(-y*d.z+x*rz)*dt*2;const c=loc=='home'?[0,4.6,4.9]:[40,12,12];p.x=Math.max(c[0]-c[1],Math.min(c[0]+c[1],p.x));p.z=Math.max(-c[2],Math.min(c[2],p.z))}
 const clock=new T.Clock();let pt=0;
 R.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.1);acc+=dt/60;while(acc>=1){acc-=1;hourTick()}
  const ss=R.xr.getSession();
- if(ss){ss.inputSources.forEach(s=>{const a=s.gamepad&&s.gamepad.axes;if(!a)return;const x=a[2]||0,y=a[3]||0;if(s.handedness=='left'){if(Math.abs(x)>.15||Math.abs(y)>.15)mv(x,y,dt)}else if(s.handedness=='right'){if(Math.abs(x)>.7){if(!snap){snap=1;rig.rotation.y-=Math.sign(x)*Math.PI/6}}else snap=0}});
+ if(ss){ss.inputSources.forEach(s=>{const a=s.gamepad&&s.gamepad.axes;if(!a)return;const bt=s.gamepad.buttons,h=s.handedness;sq[h]=!!(bt[1]&&bt[1].pressed);const b5=!!(bt[5]&&bt[5].pressed);if(b5&&!pb[h]){if(h==(lefty?'left':'right'))reload();else if(panel.visible&&cur==invUI)closeUI();else open(invUI)}pb[h]=b5;const x=a[2]||0,y=a[3]||0;if(s.handedness=='left'){if(Math.abs(x)>.15||Math.abs(y)>.15)mv(x,y,dt)}else if(s.handedness=='right'){if(Math.abs(x)>.7){if(!snap){snap=1;rig.rotation.y-=Math.sign(x)*Math.PI/6}}else snap=0}});
   if(panel.visible){let n=-1;ctl.forEach(c=>{ray(c);const h=rc.intersectObject(panel)[0];if(h&&n<0)n=rowAt(h.uv)});if(n!=hov){hov=n;draw()}}}
  else{const x=(K.KeyD?1:0)-(K.KeyA?1:0),y=(K.KeyS?1:0)-(K.KeyW?1:0);if(x||y)mv(x,y,dt)}
- pt+=dt;if(pt>.5){pt=0;if(panel.visible&&cur)draw()}
+ pt+=dt;if(pt>.5){pt=0;if(panel.visible&&cur)draw()}gunTick(dt);
  hud.textContent=ss?'':`Day ${day}  ${clk()}  $${cash}`;R.render(S,cam)});
 build('grow');genBuyers();
 const ov=document.getElementById('ov');
