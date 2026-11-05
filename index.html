@@ -63,15 +63,15 @@ function stUI(st){
  if(st.k=='gun')return gunUI(st);const gun=0,rows=[];
  if(st.job){const j=st.job;rows.push(j.t>0?{t:`Working on ${j.n}: ${j.t}h left`,d:1}:{t:`Collect ${j.n}`,f:()=>{j.done();st.job=null;vis(st)}})}
  else if(gun)guns.forEach((g,i)=>rows.push({t:`Craft 2× ${g.n} (${g.p} parts, ${g.h}h)`,d:have('part')<g.p,f:()=>{add('part',-g.p);st.job={n:'2× '+g.n,t:g.h,done:()=>{add('gun:'+i,2);msg='Collected 2× '+g.n+'.'}};vis(st)}}));
- else{drugs.forEach((g,i)=>rows.push({t:`Cook ${g.n} (${g.c} chems, ${g.h}h, makes ${g.y})`,d:have('chem')<g.c,f:()=>{add('chem',-g.c);st.job={n:g.y+'× '+g.n,t:g.h,done:()=>{add('drug:'+i,g.y);msg=`Collected ${g.y}× ${g.n}.`}};vis(st)}}));
+ else{drugs.forEach((g,i)=>rows.push({t:`Cook ${g.n} (${g.c} chems, ${g.h}h, makes ${g.y})`,d:have('chem')<g.c,f:()=>{add('chem',-g.c);st.job={n:g.y+'× '+g.n,t:g.h,x:['cook',i],done:()=>{add('drug:'+i,g.y);msg=`Collected ${g.y}× ${g.n}.`}};vis(st)}}));
   const wk=()=>strains.map((_,i)=>'weed:'+i).filter(k=>have(k)>0),tw=()=>{const k=wk()[0];add(k,-1);return k};
-  rows.push({t:'Cross-breed new strain (2 weed, 10h)',d:wk().reduce((a,k)=>a+have(k),0)<2,f:()=>{const a=tw(),b=tw(),pa=P(a),pb=P(b),d={n:p1(A)+' '+p1(N),v:Math.round((pa.v+pb.v)/2*(.9+rnd()*.7)),g:Math.max(4,Math.round((pa.g+pb.g)/2*(.7+rnd()*.5))),y:Math.round((pa.y+pb.y)/2)+(rnd()<.4?1:0)};st.job={n:'strain '+d.n,t:10,done:()=>{strains.push(d);add('seed:'+(strains.length-1),3);msg=`New strain ${d.n}! 3 seeds added.`}};vis(st)}});
-  rows.push({t:'Invent new drug ($500, 12h)',d:cash<500||drugs.length>=5,f:()=>{cash-=500;const d={n:p1(A2)+' '+p1(N2),v:ri(90,320),c:ri(2,5),h:ri(6,14),y:ri(4,7)};st.job={n:'formula',t:12,done:()=>{drugs.push(d);msg=`Invented ${d.n}. Cook it at the lab.`}};vis(st)}})}
+  rows.push({t:'Cross-breed new strain (2 weed, 10h)',d:wk().reduce((a,k)=>a+have(k),0)<2,f:()=>{const a=tw(),b=tw(),pa=P(a),pb=P(b),d={n:p1(A)+' '+p1(N),v:Math.round((pa.v+pb.v)/2*(.9+rnd()*.7)),g:Math.max(4,Math.round((pa.g+pb.g)/2*(.7+rnd()*.5))),y:Math.round((pa.y+pb.y)/2)+(rnd()<.4?1:0)};st.job={n:'strain '+d.n,t:10,x:['strain',d],done:()=>{strains.push(d);add('seed:'+(strains.length-1),3);msg=`New strain ${d.n}! 3 seeds added.`}};vis(st)}});
+  rows.push({t:'Invent new drug ($500, 12h)',d:cash<500||drugs.length>=5,f:()=>{cash-=500;const d={n:p1(A2)+' '+p1(N2),v:ri(90,320),c:ri(2,5),h:ri(6,14),y:ri(4,7)};st.job={n:'formula',t:12,x:['invent',d],done:()=>{drugs.push(d);msg=`Invented ${d.n}. Cook it at the lab.`}};vis(st)}})}
  return{title:gun?'Gun bench':'Chem lab',lines:[gun?`Parts: ${have('part')}. Buy more from the supplier.`:`Chems: ${have('chem')}. Buy more from the supplier.`,msg],rows}}
 const plantUI=(st,i)=>({title:'Pick a seed',lines:['Better strains grow faster or yield more.'],rows:strains.map((s,j)=>({t:`${s.n}: ${have('seed:'+j)} seeds, ${s.g}h, yields ${s.y}`,d:have('seed:'+j)<1,f:()=>{add('seed:'+j,-1);st.plots[i]={s:j,t:s.g};vis(st);goto(()=>stUI(st))}})).slice(0,7).concat([{t:'Back',f:()=>goto(()=>stUI(st))}])});
 // phone
 const stash=()=>{const f=(a,p)=>a.map((s,i)=>have(p+i)?have(p+i)+'× '+s.n:'').filter(Boolean).join(', ')||'none';return[`Chems ${have('chem')}   Seeds ${strains.reduce((a,_,i)=>a+have('seed:'+i),0)}`,'Weed: '+f(strains,'weed:'),'Drugs: '+f(drugs,'drug:'),'Guns: '+gunsInv.length+' (Y or I opens inventory)',msg]};
-const phoneUI=()=>({title:'Phone',lines:stash(),rows:[{t:`Buyers (${buyers.length})`,f:()=>goto(buyersUI)},{t:'Supplier',f:()=>goto(supUI)},{t:`Crew (${crew.length})`,f:()=>goto(crewUI)},{t:'Build stations',f:()=>goto(buildUI)}]});
+const phoneUI=()=>({title:'Phone',lines:stash(),rows:[{t:`Buyers (${buyers.length})`,f:()=>goto(buyersUI)},{t:'Supplier',f:()=>goto(supUI)},{t:`Crew (${crew.length})`,f:()=>goto(crewUI)},{t:'Build stations',f:()=>goto(buildUI)},{t:'New game',f:()=>goto(resetUI)}]});
 const buyersUI=()=>({title:'Buyers',lines:['New buyers call every morning.','Bigger deals mean higher risk of ambush or bust.',deal?`Meeting with ${deal.n} set. Use the door.`:''],rows:buyers.map(b=>({t:`${b.n}: ${b.q}× ${nm(b.k)} for $${b.pay} (${Math.round(b.risk*100)}%)`,f:()=>goto(()=>buyerUI(b))})).concat([{t:'Back',f:()=>goto(phoneUI)}])});
 const buyerUI=b=>({title:b.n,lines:[`Wants ${b.q}× ${nm(b.k)} for $${b.pay}${b.k=='gun:0'?' plus your mods':''}.`,`You have ${have(b.k)}.`,`Chance of ambush or bust: ${Math.round(b.risk*100)}%.`],rows:[{t:deal?'You already have a meeting':'Accept: meet outside',d:!!deal||have(b.k)<b.q,f:()=>{deal=b;buyers=buyers.filter(x=>x!=b);msg=`Meet ${b.n} outside. Walk to the door.`;goto(phoneUI)}},{t:'Back',f:()=>goto(buyersUI)}]});
 const buy=(k,l,n,c)=>({t:`Buy ${n}× ${l} ($${c*n})`,d:cash<c*n,f:()=>{cash-=c*n;add(k,n)}});
@@ -98,7 +98,7 @@ function resolve(){const d=deal;if(have(d.k)<d.q){resMsg='You came without the g
 // time
 function work(){for(const st of stations)if(st.k=='grow')for(let i=0;i<4;i++){const p=st.plots[i];if(p&&p.t<=0){add('weed:'+p.s,strains[p.s].y);st.plots[i]=null;return}if(!p){const s=strains.findIndex((_,j)=>have('seed:'+j)>0);if(s>=0){add('seed:'+s,-1);st.plots[i]={s,t:strains[s].g};return}}}}
 function hourTick(){hour++;if(hour>23){hour=0;day++;const w=crew.length*40;if(w){cash-=w;if(cash<0){cash=0;S.remove(crew.pop());msg='A gangster quit: unpaid wages.'}}genBuyers()}
- stations.forEach(st=>{if(st.k=='grow')st.plots.forEach(p=>{if(p&&p.t>0)p.t--});else if(st.job&&st.job.t>0)st.job.t--});crew.forEach(work);stations.forEach(vis)}
+ stations.forEach(st=>{if(st.k=='grow')st.plots.forEach(p=>{if(p&&p.t>0)p.t--});else if(st.job&&st.job.t>0)st.job.t--});crew.forEach(work);stations.forEach(vis);save()}
 // UI panel
 const cv=document.createElement('canvas');cv.width=640;cv.height=800;const g=cv.getContext('2d'),tex=new T.CanvasTexture(cv),panel=new T.Mesh(new T.PlaneGeometry(.88,1.1),new T.MeshBasicMaterial({map:tex}));panel.visible=false;S.add(panel);
 let cur=null,rows=[],hov=-1;
@@ -112,18 +112,18 @@ const GB={pistol:{n:'Pistol',c:50,s:60,d:10,m:[7,15,30],r:.05,L:.18,t:2},shotgun
 const magOf=c=>c.b=='shotgun'&&c.au?[7,10,20]:GB[c.b].m,fix=c=>{if(!magOf(c)[c.mg])c.mg=1;return c};
 const gs=c=>{const B=GB[c.b],k=STK[c.st],m=MC[c.mg],A=c.b=='shotgun'&&c.au;return{cost:B.c+10*c.br+(c.las?10:0)+(c.au?15:0)+k[0]+m[0],sell:B.s+15*c.br+(c.las?15:0)+(c.au?25:0)+k[1]+m[1],dmg:Math.round(B.d*(1+.25*c.br)*10)/10,mag:magOf(c)[c.mg],rec:B.r*k[2]*(c.au?1.3:1),len:B.L+.08*c.br+(A?.15:0),pel:c.b=='shotgun'?8:1,time:B.t+c.br}};
 const sell=g=>gs(g).sell,canTwo=g=>g.b!='pistol'&&gs(g).len>=.4,desc=c=>`${GB[c.b].n}${c.br?' +'+c.br+' barrel':''}${c.au?' auto':''}${c.las?' laser':''}${c.st!='none'?' '+c.st+' stock':''} (${MG[c.mg]} mag)`;
-function gunMesh(c){const g=new T.Group(),M=0x2b2b30,A=c.b=='shotgun'&&c.au,sc=A?1.15:1,L=(c.b=='smg'?.26:.4)*sc,k=(w,h,d,col,x,y,z)=>box(w,h,d,col,x,y,z,g);let mz;
- k(.035,.11,.05,0x1c1c20,0,-.06,.02);k(.03,.012,.06,M,0,-.012,-.045);
- if(c.b=='pistol'){k(.035,.04,.18,M,0,.02,-.07);mz=.16}
- else if(c.b=='shotgun'&&!A){k(.04,.05,.2,M,0,.02,-.08);k(.025,.025,.3,0x444449,0,.03,-.2);k(.045,.04,.1,0x5a3a22,0,-.005,-.22);mz=.35}
- else{k(.04,.06,L,M,0,.025,-L/2+.03);mz=L-.03}
+function gunMesh(c){const g=new T.Group(),M=0x2b2b30,A=c.b=='shotgun'&&c.au,sc=A?1.15:1,L=(c.b=='smg'?.26:.4)*sc,k=(w,h,d,col,x,y,z)=>box(w,h,d,new T.Color(col).lerp(new T.Color(0x9aa0aa),.35).getHex(),x,y,z,g);let mz;
+ k(.035,.12,.05,0x1c1c20,0,-.055,.02);k(.012,.012,.09,M,0,-.05,-.045);k(.012,.05,.012,M,0,-.025,-.085);k(.01,.04,.01,0x15151a,0,-.02,-.03);
+ if(c.b=='pistol'){k(.035,.045,.21,M,0,.025,-.055);mz=.16}
+ else if(c.b=='shotgun'&&!A){k(.04,.05,.23,M,0,.02,-.065);k(.025,.025,.35,0x444449,0,.03,-.175);k(.045,.04,.1,0x5a3a22,0,-.005,-.22);mz=.35}
+ else{k(.04,.06,L+.02,M,0,.025,.04-L/2);mz=L-.03}
  for(let i=0;i<c.br;i++)k(.03,.03,.08,0x55555c,0,.025,-mz-.04-i*.08);mz+=.08*c.br;
- if(c.b!='shotgun'||A){const mx=c.b=='pistol'?.02:c.b=='smg'?-.07:-.16*sc,h=[.09,.14][c.mg]||.1;if(c.mg==2){const d=new T.Mesh(new T.CylinderGeometry(.055,.055,.04,14),new T.MeshLambertMaterial({color:0x1c1c20}));d.rotation.z=Math.PI/2;d.position.set(0,-.1,mx);g.add(d)}else k(.03,h,.05,0x1c1c20,0,-.04-h/2,mx)}
+ if(c.b!='shotgun'||A){const mx=c.b=='pistol'?.02:c.b=='smg'?-.1:-.16*sc,h=[.09,.14][c.mg]||.1;if(c.mg==2){const d=new T.Mesh(new T.CylinderGeometry(.06,.06,.07,18),new T.MeshLambertMaterial({color:0x5a5d66}));d.rotation.x=Math.PI/2;d.position.set(0,c.b=='pistol'?-.11:-.055,mx);g.add(d)}else k(.03,h,.05,0x1c1c20,0,.002-h/2,mx)}
  if(c.las)k(.02,.02,.05,0xff2222,0,.065,-.12);if(c.au)k(.01,.025,.06,0xd9a441,.022,.03,-.03);
  if(c.st=='full')k(.04,.08,.22,0x5a3a22,0,0,.17);else if(c.st=='tac')k(.025,.05,.15,0x333338,0,.02,.14);
  g.userData.mz=mz;return g}
 function gunUI(st){const c=st.cfg||(st.cfg={b:'pistol',br:0,las:0,au:0,st:'none',mg:0}),s=gs(fix(c)),key=JSON.stringify(c),j=st.job,set=f=>()=>{f();fix(c)};
- if(st.pk!=key){st.pk=key;if(st.pv)st.g.remove(st.pv);st.pv=gunMesh(c);st.pv.scale.setScalar(1.6);st.pv.rotation.y=-Math.PI/2;st.pv.position.set(-.3,1.05,0);st.g.add(st.pv)}
+ if(st.pk!=key){st.pk=key;if(st.pv)st.g.remove(st.pv);st.pv=gunMesh(c);st.pv.scale.setScalar(1.6);st.pv.rotation.y=-Math.PI/2;st.pv.position.set(-.3,1.4,0);st.g.add(st.pv);if(!st.pl){st.pl=new T.PointLight(0xffffff,.9,3);st.pl.position.set(0,1.6,.9);st.g.add(st.pl)}}
  return{title:'Gun bench',lines:[`Cost $${s.cost}   Sells $${s.sell}`,`Damage ${s.dmg}${s.pel>1?' x'+s.pel+' pellets':''}   Mag ${s.mag}`,`Recoil ${(s.rec*100).toFixed(1)}   Two-hand: ${canTwo(c)?'yes':'no'}`,msg],rows:[
  {t:'Body: '+GB[c.b].n,f:set(()=>{c.b=BO[(BO.indexOf(c.b)+1)%4]})},
  {t:`Add barrel (${c.br}/5, +$10 cost, +$15 sell)`,d:c.br>=5,f:set(()=>c.br++)},
@@ -132,7 +132,7 @@ function gunUI(st){const c=st.cfg||(st.cfg={b:'pistol',br:0,las:0,au:0,st:'none'
  {t:`Automod: ${c.au?'on':'off'} (+$15 cost, +$25 sell)`,f:set(()=>c.au^=1)},
  {t:'Stock: '+c.st,f:set(()=>c.st=SK[(SK.indexOf(c.st)+1)%3])},
  {t:`Magazine: ${MG[c.mg]} (${s.mag})`,f:set(()=>{const m=magOf(c);do c.mg=(c.mg+1)%3;while(!m[c.mg])})},
- j?(j.t>0?{t:`Building ${j.n}: ${j.t}h left`,d:1}:{t:'Collect '+j.n,f:()=>{j.done();st.job=null;vis(st)}}):{t:`Craft this gun ($${s.cost}, ${s.time}h)`,d:cash<s.cost,f:()=>{cash-=s.cost;const cf={...c};st.job={n:desc(cf),t:s.time,done:()=>{cf.ammo=gs(cf).mag;gunsInv.push(cf);msg='Collected: '+desc(cf)}};vis(st)}}]}}
+ j?(j.t>0?{t:`Building ${j.n}: ${j.t}h left`,d:1}:{t:'Collect '+j.n,f:()=>{j.done();st.job=null;vis(st)}}):{t:`Craft this gun ($${s.cost}, ${s.time}h)`,d:cash<s.cost,f:()=>{cash-=s.cost;const cf={...c};st.job={n:desc(cf),t:s.time,x:['gun',cf],done:()=>{cf.ammo=gs(cf).mag;gunsInv.push(cf);msg='Collected: '+desc(cf)}};vis(st)}}]}}
 // inventory, hotbar, shooting
 let eq=null,rg=null,two=false,held=0,lefty=false,rl=0,cd=0,kick=0,lt=0,ip=0;const sq={},pb={},tw=new T.Vector3(),FW=new T.Vector3(0,0,-1),XA=new T.Vector3(1,0,0),qk=new T.Quaternion();
 const hbg=new T.Group(),hs=[0,1,2].map(i=>{const m=new T.Mesh(new T.BoxGeometry(.08,.08,.08),new T.MeshBasicMaterial({color:0x3fa56b,transparent:true,opacity:.35}));m.position.set(0,.06,.1+i*.1);hbg.add(m);return m});
@@ -153,7 +153,7 @@ function fire(){if(!eq||!rg||rl>0||cd>0)return;if(eq.ammo<=0){reload();return}co
  kick+=s.rec*(two?.5:1)}
 function gunTick(dt){const pres=R.xr.isPresenting,gc=pres?gunCtl():cam,oc=pres?ctl.find(c=>c.hand==(lefty?'right':'left')):null;
  if(oc){if(hbg.parent!=oc)oc.add(hbg)}else if(hbg.parent)hbg.parent.remove(hbg);
- if(rg&&gc&&rg.parent!=gc){gc.add(rg);rg.position.set(pres?0:.22,pres?0:-.22,pres?0:-.45)}
+ if(rg&&gc&&rg.parent!=gc){gc.add(rg);rg.position.set(pres?0:.22,pres?.05:-.2,pres?0:-.45)}
  cd-=dt;kick*=Math.exp(-dt*9);if(rl>0){rl-=dt;if(rl<=0&&eq)eq.ammo=gs(eq).mag}
  if(held&&eq&&eq.au)fire();
  if(eq&&rg){const s=gs(eq);rg.quaternion.identity();
@@ -164,10 +164,10 @@ function gunTick(dt){const pres=R.xr.isPresenting,gc=pres?gunCtl():cam,oc=pres?c
 // input
 const rc=new T.Raycaster(),tm=new T.Matrix4();
 function ray(o){tm.identity().extractRotation(o.matrixWorld);rc.ray.origin.setFromMatrixPosition(o.matrixWorld);rc.ray.direction.set(0,0,-1).applyMatrix4(tm)}
-function pick(){if(panel.visible){const h=rc.intersectObject(panel)[0];if(h){const i=rowAt(h.uv);if(i>=0&&!rows[i].d){rows[i].f();if(cur&&panel.visible)draw()}return 1}}const q=rc.intersectObjects(hs)[0];if(q){if(q.object.userData.g)equip(q.object.userData.g);return 1}const h=rc.intersectObjects(hit)[0];if(h&&(!eq||h.distance<2.5)){h.object.userData.act();return 1}}
+function pick(){if(panel.visible){const h=rc.intersectObject(panel)[0];if(h){const i=rowAt(h.uv);if(i>=0&&!rows[i].d){rows[i].f();save();if(cur&&panel.visible)draw()}return 1}}const q=rc.intersectObjects(hs)[0];if(q){if(q.object.userData.g)equip(q.object.userData.g);return 1}const h=rc.intersectObjects(hit)[0];if(h&&(!eq||h.distance<2.5)){h.object.userData.act();return 1}}
 const ctl=[0,1].map(i=>{const c=R.xr.getController(i);c.add(new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(),new T.Vector3(0,0,-4)]),new T.LineBasicMaterial({color:0xd9a441})));rig.add(c);c.addEventListener('selectstart',()=>{ray(c);if(!pick()&&eq&&c==gunCtl()){fire();held=1}});c.addEventListener('selectend',()=>held=0);c.addEventListener('connected',e=>{c.hand=e.data.handedness});return c});
 const aim=e=>rc.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),cam);
-let dn=null,snap=0;const K={};onkeydown=e=>{K[e.code]=1;if(e.code=='KeyR')reload();if(e.code=='KeyI'||e.code=='Tab'){e.preventDefault();panel.visible&&cur==invUI?closeUI():open(invUI)}};onkeyup=e=>K[e.code]=0;
+let dn=null,snap=0;const K={};const KON=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyB','KeyA'];let kp=0;onkeydown=e=>{K[e.code]=1;kp=e.code==KON[kp]?kp+1:(e.code==KON[0]?1:0);if(kp==KON.length){kp=0;cash+=10000;msg='Cheat activated: +$10,000.';if(panel.visible&&cur)draw()}if(e.code=='KeyR')reload();if(e.code=='KeyI'||e.code=='Tab'){e.preventDefault();panel.visible&&cur==invUI?closeUI():open(invUI)}};onkeyup=e=>K[e.code]=0;
 R.domElement.onpointerdown=e=>{dn=[e.clientX,e.clientY,0]};
 onpointermove=e=>{if(dn&&e.buttons){const dx=e.clientX-dn[0],dy=e.clientY-dn[1];dn[2]+=Math.abs(dx)+Math.abs(dy);rig.rotation.y-=dx*.004;cam.rotation.x=Math.max(-1.2,Math.min(1.2,cam.rotation.x-dy*.004));dn[0]=e.clientX;dn[1]=e.clientY}else if(panel.visible&&!R.xr.isPresenting){aim(e);const h=rc.intersectObject(panel)[0],n=h?rowAt(h.uv):-1;if(n!=hov){hov=n;draw()}}};
 R.domElement.onpointerup=e=>{if(dn&&dn[2]<6){aim(e);if(!pick()&&eq)fire()}dn=null};
@@ -181,7 +181,19 @@ R.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.1);acc+=dt/60;while(
  else{const x=(K.KeyD?1:0)-(K.KeyA?1:0),y=(K.KeyS?1:0)-(K.KeyW?1:0);if(x||y)mv(x,y,dt)}
  pt+=dt;if(pt>.5){pt=0;if(panel.visible&&cur)draw()}gunTick(dt);
  hud.textContent=ss?'':`Day ${day}  ${clk()}  $${cash}`;R.render(S,cam)});
-build('grow');genBuyers();
+// autosave
+const KEY='smoke-steel-save-v1';let wipe=0;
+const mkDone=x=>x[0]=='gun'?()=>{x[1].ammo=gs(x[1]).mag;gunsInv.push(x[1]);msg='Collected: '+desc(x[1])}:x[0]=='cook'?()=>{add('drug:'+x[1],drugs[x[1]].y);msg='Collected '+drugs[x[1]].n+'.'}:x[0]=='strain'?()=>{strains.push(x[1]);add('seed:'+(strains.length-1),3);msg=`New strain ${x[1].n}! 3 seeds added.`}:()=>{drugs.push(x[1]);msg=`Invented ${x[1].n}. Cook it at the lab.`};
+function save(){if(wipe)return;try{localStorage.setItem(KEY,JSON.stringify({cash,day,hour,acc,msg,inv,strains,drugs,buyers,gunsInv,hot:hot.map(g=>gunsInv.indexOf(g)),crew:crew.length,st:stations.map(s=>({k:s.k,plots:s.plots,cfg:s.cfg,job:s.job&&{n:s.job.n,t:s.job.t,x:s.job.x}}))}))}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(!s)return 0;
+ cash=s.cash;day=s.day;hour=s.hour;acc=s.acc;msg=s.msg;buyers=s.buyers||[];
+ Object.keys(inv).forEach(k=>delete inv[k]);Object.assign(inv,s.inv);strains.splice(0,strains.length,...s.strains);drugs.splice(0,drugs.length,...s.drugs);gunsInv.splice(0,gunsInv.length,...s.gunsInv);s.hot.forEach((x,i)=>hot[i]=x>=0?gunsInv[x]:null);
+ for(let i=0;i<s.crew;i++)crew.push(fig(0x33333d,...CP[i]));
+ s.st.forEach(o=>{build(o.k);const st=stations[stations.length-1];if(o.plots)st.plots=o.plots;if(o.cfg)st.cfg=o.cfg;if(o.job)st.job={n:o.job.n,t:o.job.t,x:o.job.x,done:mkDone(o.job.x)};vis(st)});
+ if(!s.buyers)genBuyers();refHot();return 1}catch(e){return 0}}
+const resetUI=()=>({title:'New game',lines:['This erases your save and starts over.'],rows:[{t:'Erase save and restart',f:()=>{wipe=1;try{localStorage.removeItem(KEY)}catch(e){}location.reload()}},{t:'Back',f:()=>goto(phoneUI)}]});
+addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});setInterval(save,15000);
+if(!load()){build('grow');genBuyers()}
 const ov=document.getElementById('ov');
 pc.onclick=()=>ov.style.display='none';
 vr.onclick=async()=>{try{const s=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']});R.xr.setSession(s);ov.style.display='none';s.addEventListener('end',()=>ov.style.display='flex')}catch(e){alert('VR is not available here: '+(e.message||e)+'. Open this page directly in the Quest Browser.')}};
